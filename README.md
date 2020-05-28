@@ -26,4 +26,10 @@ Please cite the `circlize` package authors as:
 
 
 
+## To Do
 
+- join patients COVID01 und COVID01-t2
+- highlight anti-covid IPCs
+- add clonality band
+- add # patients connected band
+- 

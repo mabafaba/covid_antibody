@@ -1,85 +1,37 @@
----
-title: "covid antibody circlos chart"
-author: "Martin Barner"
-date: "28 5 2020"
-output:
-  html_document:
-    toc: true
-    code_folding: hide
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
-```
-
-## Dependencies
-
-### Installation..
-```{r, eval=FALSE}
-
-# setup & loading functions -----------------------------------------------
-
-# hope I didn't forget any
-
-# if you don't have these packages yet, please install:
-# install.packages("circlize")
-# install.packages("dplyr")
-# install.packages("RColorBrewer") # funky colours
-# install.packages("viridis")  # even more funky colours <3
-# install.packages("purrr")
-# install.packages("readr")
-# install.packages("knitr") # required only to process this file
-
-```
-
-### Loading packages..
-```{r, message=FALSE, warning=FALSE}
 library(circlize)
 library(dplyr)
 library(RColorBrewer)
 library(viridis)
 library(purrr)
 library(readr)
-```
 
-### source helper functions from ./r ..
-
-```{r}
 # source all files in ./r
 # they're all functions used below
-sapply(list.files("./r",pattern = ".*\\.R",full.names = T),source) %>% invisible()
-```
+sapply(list.files("./r",pattern = ".*\\.R",full.names = T),source)
 
-### Citations
-
-Please cite relevant R packages in any publication:
-
-```{r}
-citation("circlize")
-#' citation("dplyr")
-#' citation("purrr")
-```
+# cite as
+# citation("circlize")
 
 ## Data
 
-Read data *from csv* instead of xlsx to avoid non-funky dependencies & standardise headers..
-```{r, message=FALSE,warning=FALSE}
+# Read data *from csv* instead of xlsx to avoid non-funky dependencies & standardise headers..
 ab <- readr::read_delim("./data/antibody_v4.csv",delim = ",")
 # standardise headers
 ab <- ab %>% select(Patient = ID,
                     Name = Name,
                     Clonality = Clonality,
                     `Inter-Patient connection` = `Inter Patient Clonality`)
-```
 
 ## Processing
 
-### prepare antibody data
 
-- merge patients
-- add info about known covid IPCs
-- generate x coordinates to be used as angular position (as usually for example genomic location)
-```{r}
+# 
+# prepare antibody data
+# 
+# - merge patients
+# - add info about known covid IPCs
+# - generate x coordinates to be used as angular position (as usually for example genomic location)
+
 ab <- ab %>%
   merge_patients("COVID001","COVID001_t2") %>% 
   merge_patients("COVID-SP", "COVID-SP (HD-B)") %>%
@@ -100,46 +52,32 @@ ab <- ab %>%
     # "(CV-SP-107)",
     "CV05-119",
     "CV07-209"
-                               )) %>% 
+  )) %>% 
   generate_x_coordinates 
-```
+# 
+# Create a table with connections from the antibody data
+# - extract which individual antibody names are linked
+# - add some info from the antibody table
+# - merge links coming from same clonality
+# - remove wihtin-patient links
 
-### Links
-
-Create a table with connections from the antibody data
-
-- extract which individual antibody names are linked
-- add some info from the antibody table
-- merge links coming from same clonality
-- remove wihtin-patient links
-
-```{r}
 links <- ab %>%
   get_link_table %>%  
   add_info_to_link_table(ab) %>% 
   merge_clonality_in_links %>% 
   remove_inter_patient_links
-```
 
 
 ## Plot
 
-
-### Start graphics device 
-```{r, eval = FALSE}
 pdf(file = "./circos.pdf",width = 5,height = 6)
-```
 
-### Build plot elements..
-
-- set parameters (most are still in the function calls in this document though..)
-- set up circular layout
-- plot stripes for clonality & individual antibodies
-- plot links
-- plot labels
-
-```{r}
-
+# Build plot elements..
+# - set parameters (most are still in the function calls in this document though..)
+# - set up circular layout
+# - plot stripes for clonality & individual antibodies
+# - plot links
+# - plot labels
 
 # plot parameters --------------------------------------------------------------------
 
@@ -184,8 +122,8 @@ ab %>%
 
 # decide the colors
 colors <- ifelse(ab$known_covid_antibody,
-                                  palette[13], # when known_covid_antibody then this color
-                                  "#CCCCCC" )# otherwise this color
+                 palette[13], # when known_covid_antibody then this color
+                 "#CCCCCC" )# otherwise this color
 # plot
 ab %>% 
   antibody_rectangles(rectangle_color = colors,
@@ -218,35 +156,7 @@ patient_labels(ab,patient_label_offset = 0.1,
 #                 antibody_label_facing = "clockwise",
 #                 antibody_label_size = 0.2)
 
-```
-
-### close graphics device..
-```{r, results=FALSE, eval = FALSE}
 dev.off()
-```
 
 
-## Appendix
-
-### sourced scripts / functions
-```{r, echo = T}
-
-
-object_list <- sapply(ls(),get) %>% sapply(is.function)
-
-sapply(names(object_list)[object_list],get) %>% print
-
-```
-
-
-### Reproducibility Signature
-```{r}
-Sys.time()
-```
-```{r}
-sessionInfo()
-
-```
-
-
-
+# Appendix
