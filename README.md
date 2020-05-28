@@ -1,9 +1,11 @@
 # Covid Antibody Visualisation
 
 ## Project structure
-- `circos.html` output
-- `circos.Rmd` scripts & documentation
-- `covid_antibody.RProj` open this file to edit in RStudio
+- `circos.html` output (includes code)
+- `circos.Rmd`  main script & doc (produces circos.html)
+- `covid_raw.R` equivalent to `circos.Rmd` but straight up R code (without markdown)
+- `covid_antibody.RProj` open this file to edit the scripts in RStudio
+- `./r/.*.R` functions used in circos.Rmd
 - `./data` raw data as received. Do not edit these files. (may be exluded from repository - please ask for data)
 - `./resources` related information / documents
 

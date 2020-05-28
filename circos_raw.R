@@ -79,6 +79,7 @@ pdf(file = "./circos.pdf",width = 5,height = 6)
 # - plot links
 # - plot labels
 
+
 # plot parameters --------------------------------------------------------------------
 
 pdf_width <- 5
@@ -115,7 +116,7 @@ ab %>%
   summarise(start = min(start),end= max(end)) %>% 
   antibody_rectangles(rectangle_color = "#000000",  # fill black
                       border_color = "#FFFFFF", # border white (for gaps between the black stripes where clon groups touch)
-                      y = c(0, 1))
+                      y = c(0.95, 1.05))
 
 
 # individual antibodies
@@ -147,7 +148,7 @@ antibody_links(links,link_color = link_colors)
 
 # plot labels -------------------------------------------------------------
 
-patient_labels(ab,patient_label_offset = 0.1,
+patient_labels(ab,patient_label_offset = 0.15,
                patient_label_prefix = "",
                patient_label_size = 0.8)
 
@@ -155,6 +156,10 @@ patient_labels(ab,patient_label_offset = 0.1,
 # antibody_labels(ab,antibody_label_offset = 0,
 #                 antibody_label_facing = "clockwise",
 #                 antibody_label_size = 0.2)
+
+
+# close graphics device ---------------------------------------------------
+
 
 dev.off()
 
