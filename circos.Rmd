@@ -1,0 +1,249 @@
+---
+title: "covid_circos"
+author: "Martin Barner"
+date: "27 5 2020"
+output:
+  html_document:
+    toc: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
+```
+
+## Dependencies
+
+Installation..
+```{r, eval=FALSE}
+# if you don't have these packages yet, please install:
+# install.packages("circlize")
+# install.packages("dplyr")
+# install.packages("RColorBrewer")
+# install.packages("purrr")
+```
+
+Loading..
+```{r, message=FALSE, warning=FALSE}
+library(circlize)
+library(dplyr)
+library(RColorBrewer)
+library(purrr)
+```
+
+helper functions..
+
+```{r}
+
+#' function to create colors for each unique value in a vector and return a vector with corresponding colors
+#' @param x a vector
+#' @param palette the name of an RColorBrewer palette
+#' @return a vector of colors same length as x
+as_colors<-function(x, palette = color_palette){
+  n <- length(unique(x)) # how many we need
+  cols <- RColorBrewer::brewer.pal(n = n,name = palette) # make palette
+  if(length(cols)<n){stop("not enough colours in pallette")}
+  
+  return(cols[match(x,unique(x))]) # get vector of colors matching the input vector
+  
+  }
+
+
+#' turn all NA values in x into the first value in x that is not NA
+#' @param x a vector
+#' @return a vector as long as x with no NAs if any value in x was not NA
+expand_not_na <- function(x){
+  if(all(is.na(x))){return(x)} #if all are NA, do nothing
+  first_not_NA <- x[min(which(!is.na(x)))] # get first matching dominant value
+  x[is.na(x)]<-first_not_NA # convert all NAs into that value
+  x
+}
+
+```
+
+
+Please cite the defining R packages that were used in any publications:
+
+```{r}
+citation("circlize")
+#' citation("RColorBrewer")
+#' citation("dplyr")
+#' citation("purrr")
+```
+
+## Data
+
+Reading from csv to avoid funky dependencies (assuming semi-colon as column separator)
+```{r, message=FALSE,warning=FALSE}
+ab <- readr::read_delim("./data/antibody_sample.csv",delim = ";")
+```
+
+## Processing
+
+Add "x" coordinates.. 
+```{r}
+
+#' we're missing info on genomic position, so we'll create some values to arrange the data by along the x (angular) axis
+
+# sort
+ab <- ab %>% arrange(Patient,Clonality, Name) 
+#' assign fake "start" and "end" positions for each antibody (same width for all)
+#' to make our life easier later, make them start at 0 for each patient, with an antibody "width" of 1
+ab <- ab %>% group_by(Patient) %>% mutate(start=0:(n()-1), end = 1:n()) %>% ungroup
+
+
+#' "inter patient connections" in the plot should connect the entire clonality group that contains the link
+#' to do that it helps a lot to have the "inter-patient connection" group added to all entries of a clonality group
+ab <- ab %>% filter(Clonality!="unique") %>%  # remove all entries without clonality temporarily
+  group_by(Clonality) %>% # for each clonality group..
+  mutate(`Inter-Patient connection` = expand_not_na(`Inter-Patient connection`)) %>% # expand the first inter patient connection group to all values
+  bind_rows(ab %>% filter(Clonality=="unique")) %>% # add non-clonality entires back in
+  arrange(Patient,Clonality,Name) # get rows back in order
+
+```
+
+Create edge list for links..
+```{r}
+#' we also need an "edge" list to draw the links that has:
+#' - one row per link
+#' - four values on the "x axis" for the four "corners" of the band
+#' - which patients they connect (because x values are applied relative to the sector)
+links <- ab %>% ungroup %>% 
+  # get only those antibodies with links
+  filter(!is.na(`Inter-Patient connection`)) %>%
+  # pick out relevant columns
+  select(Name,`Inter-Patient connection`) %>% 
+  # do everything after this for each "connection group" (they appear multiple times but we just filter them out after)
+  group_by(`Inter-Patient connection`) %>%  
+  # get all possible combinations of 2 within each group:  1 and 2 and 3 --->   1-1 and 1-2 and 1-3 and 2-3
+  transmute(name = list((combn(as.character(Name),2) %>% t))) 
+# extract the source -> target combinations for the bands and turn them into a data frame of their own
+links <- links$name %>% do.call(rbind,.) %>% data.frame 
+colnames(links)<-c("from_name","to_name")
+# remove duplicates
+links <-unique(links)
+
+# now add the relevant information from the full anitbody data
+
+# (the warnings here about factors can safely be ignored)
+links <- links %>%
+  # merge info for the start antibody
+  inner_join(ab %>% select(Name,
+                           from_patient = Patient,
+                           from_clonality = Clonality,
+                           from_start = start,
+                           from_end = end),
+             by=c("from_name" = "Name")) %>% 
+  # merge info for the end antibody
+  inner_join(ab %>% select(Name,
+                       to_patient = Patient,
+                       to_clonality = Clonality,
+                       to_start = start,
+                       to_end = end),
+             by=c("to_name" = "Name"))
+
+# links <- links %>% ungroup %>% 
+#   group_by(from_patient,to_patient,from_clonality,to_clonality) %>% 
+#   summarise(from_patient = first(from_patient),to_patient = first(to_patient),from_clonality = first(from_clonality), from_)
+  # merge links from the same patient in the same clonality
+  # !!! careful this probably turns out a mess if the `ab` data.frame is not sorted by patient and then clonality
+  
+
+```
+
+## Plot
+
+Plot parameters..
+```{r}
+
+pdf_width <- 5
+pdf_height<- 6
+
+color_palette <- "Pastel1" # RColorBrewer::display.brewer.all(3) for more options (or change manual colours below)
+patient_label_size <- 0.8
+patient_label_prefix <- ""
+patient_label_offset <- 0.5
+
+antibody_label_size <- 0.4
+antibody_label_facing <- "bending" # see ?circlize::circos.text for more options
+antibody_label_offset <-0.1
+link_color <- "#000000AA"
+```
+
+Start graphics device 
+```{r, eval = FALSE}
+pdf(file = "./output/temp.pdf",width = 5,height = 6)
+```
+
+Build plot elements..
+```{r, output = FALSE,fig.width=500,fig.height=700}
+circos.clear() # reset to defaults just in case
+par(mar = rep(0,4))
+circos.par("track.height" = 0.3, gap.after = 30) # ?circos.par : track.height: The default height of tracks. It is the percentage according to the radius of the unit circle. The height includes the top and bottom cell paddings but not the margins. convert_height can be used to set the height to an absolute unit.
+
+
+# get the limits on the x axis per patient so we can set up the circle layout accordingly
+x_limits <- ab %>% group_by(Patient) %>% summarise(x_min = min(start), x_max = max(end)) %>% select(-Patient)
+#' allocate sectors
+#' "factors" argument: variable with categories to split the pie (often chromosomes)
+#' "xlim" argument: the minimum and maximum values for the x axis
+
+circos.initialize(factors = ab$`Patient`, xlim = x_limits)
+circos.trackPlotRegion(factors =ab$`Patient`, ylim = c(0, 1),bg.border = NA)
+
+#' this weird trick helps us to draw many things at once:
+#' 1. rename columns to match drawing function paramters (usually with dplyr::transmute(), that way we can do some tweaking at the same time and it deletes all other variables)
+#' 2. pipe it to purrr::pmap, which takes a list of named parameter vectors and runs the supplied function for each combo
+
+
+
+#' patient labels
+
+ab %>% group_by(Patient) %>% 
+  summarise(midpoint = min(start) + ((max(start)-min(start))/2)) %>%  # calculate midpoint for x position
+  transmute(x = midpoint,
+            y = 1 + patient_label_offset,  # a bit above outside the circle
+            label = paste(patient_label_prefix, Patient), 
+            track.index = 1,
+            sector.index = Patient,
+            cex = patient_label_size,
+            niceFacing = T) %>% # flip labels to not be totally upside down 
+  purrr::pmap(circos.text) %>% invisible()
+#' draw rectangles
+ab %>%
+  mutate(col = as_colors(Clonality)) %>%
+  (function(x){x$col[x$Clonality == "unique"]<-"#CCCCCC";x}) %>% # looks weirder than necessary, just replacing all colors for "unique" clonality with a light gray
+  transmute(xleft = start,ybottom = 0,
+            xright = end, 
+            ytop = 1,
+            sector.index = Patient,
+            track.index = 1,
+            col = col,
+            border = "white") %>%
+  purrr::pmap(circos.rect) %>% invisible()
+
+#' antibody labels (mostly for debugging but can keep)
+ab %>% transmute(x = start, # left aligned. ### alternative: + (end-start)/2, # the rect center
+              y = 1+antibody_label_offset, #a bit above the top of the track which is at 1
+              label = Name,
+              facing = antibody_label_facing,
+              sector.index = Patient,
+              track.index = 1,
+              cex = antibody_label_size, adj = 0) %>% 
+  purrr::pmap(circos.text) %>% invisible()
+
+
+# rename the links columns so they mach the argument names in the circlos link function
+links$color <- link_color
+links %>% ungroup %>% rowwise %>% transmute(sector.index1 = from_patient,
+                                            point1 = list(c(from_start,from_end)),
+                                            sector.index2 = to_patient,
+                                            point2 = list(c(to_start,to_end)),
+                                            col = color,lty = "blank") %>%  
+  purrr::pmap(circos.link) %>% invisible() 
+```
+
+close graphics device..
+```{r, results=FALSE, eval = FALSE}
+dev.off()
+```
