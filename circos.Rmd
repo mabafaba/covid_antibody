@@ -21,8 +21,8 @@ Installation..
 # install.packages("dplyr")
 # install.packages("RColorBrewer")
 # install.packages("purrr")
-# install.packages("knitr") # required only to process this file
 # install.packages("readr")
+# install.packages("knitr") # required only to process this file
 ```
 
 Loading..
@@ -91,7 +91,7 @@ Add "x" coordinates..
 # sort
 ab <- ab %>% arrange(Patient,Clonality, Name) 
 #' assign fake "start" and "end" positions for each antibody (same width for all)
-#' to make our life easier later, make them start at 0 for each patient, with an antibody "width" of 1
+#' to make our life easier later, make them start at 0 for each patient, with an antibody "lenght" of 1
 ab <- ab %>% group_by(Patient) %>% mutate(start=0:(n()-1), end = 1:n()) %>% ungroup
 
 
@@ -145,12 +145,29 @@ links <- links %>%
                        to_end = end),
              by=c("to_name" = "Name"))
 
-# links <- links %>% ungroup %>% 
-#   group_by(from_patient,to_patient,from_clonality,to_clonality) %>% 
-#   summarise(from_patient = first(from_patient),to_patient = first(to_patient),from_clonality = first(from_clonality), from_)
-  # merge links from the same patient in the same clonality
-  # !!! careful this probably turns out a mess if the `ab` data.frame is not sorted by patient and then clonality
-  
+
+
+#' merge links that come from & to antibodies of the same clonality
+#' this means we want one row for each unique patient & clonality (from and to) combination (considering "unique" clonalities as actually unique values)
+
+#' create actually unique clonality values for "unique" clonality entries
+links$from_clonality[links$from_clonality=="unique"] <- paste("unique_clon ",
+                                                              links$from_name[links$from_clonality=="unique"]
+                                                              )
+links$to_clonality[links$to_clonality=="unique"] <- paste("unique_clon ",
+                                                              links$to_name[links$to_clonality=="unique"])                                                              
+
+
+links <- links %>% 
+  group_by(from_patient, from_clonality, to_patient,to_clonality) %>%  # this will let us end up with one row per unique combination of these variables
+  summarise(
+  # get the min/max values for the start/end x coordinates of the "from" and "to" anitbodies of each joined band
+  from_start = min(from_start),
+  from_end = max(from_end),
+  to_start = min(to_start),
+  to_end = max(to_end)
+)
+ 
 
 ```
 
@@ -175,7 +192,7 @@ link_color <- "#000000AA"
 
 Start graphics device 
 ```{r, eval = FALSE}
-pdf(file = "./output/temp.pdf",width = 5,height = 6)
+pdf(file = "./circos.pdf",width = 5,height = 6)
 ```
 
 Build plot elements..
