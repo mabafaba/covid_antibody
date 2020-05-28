@@ -27,11 +27,3 @@ Please cite the `circlize` package authors as:
 (more info on citing R packages: https://www.r-bloggers.com/how-to-cite-packages/ )
 
 
-
-## To Do
-
-- join patients COVID01 und COVID01-t2
-- highlight anti-covid IPCs
-- add clonality band
-- add # patients connected band
-- 
