@@ -70,6 +70,10 @@ ab <- ab %>% select(Patient = ID,
                     Name = Name,
                     Clonality = Clonality,
                     `Inter-Patient connection` = `Inter Patient Clonality`)
+
+# shorten patient names
+ab$Patient<-gsub("COVID0","CV",ab$Patient)
+ab$Patient<-gsub("COVID-","CV-",ab$Patient)
 ```
 
 ## Processing
@@ -236,6 +240,13 @@ object_list <- sapply(ls(),get) %>% sapply(is.function)
 
 sapply(names(object_list)[object_list],get) %>% print
 
+palette <-
+c("#000004FF", "#07071DFF", "#160F3BFF", "#29115AFF", "#400F73FF", 
+"#56147DFF", "#6B1D81FF", "#802582FF", "#952C80FF", "#AB337CFF", 
+"#C03A76FF", "#D6456CFF", "#E85362FF", "#F4685CFF", "#FA815FFF", 
+"#FD9A6AFF", "#FEB37BFF", "#FECC8FFF", "#FDE4A6FF", "#FCFDBFFF"
+)
+
 ```
 
 
@@ -245,6 +256,7 @@ Sys.time()
 ```
 ```{r}
 sessionInfo()
+
 
 ```
 
