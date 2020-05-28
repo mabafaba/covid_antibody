@@ -5,7 +5,13 @@
 # utilities -----------------------------------------------------------------
 
 
-
+shuffle_factor_levels<-function(x, seed = NULL){
+  if(!is.null(seed)){
+    set.seed(seed)
+  }
+  x = factor(x,levels(x)[sample(1:length(x))])
+  x
+}
 
 
 #' turn all NA values in x into the first value in x that is not NA

@@ -1,69 +1,41 @@
----
-title: "covid antibody circlos chart"
-author: "Martin Barner, Momsen R"
-date: "28 5 2020"
-output:
-  html_document:
-    toc: true
-    code_folding: hide
----
-
-```{r setup, include=FALSE}
+## ----setup, include=FALSE------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
-```
 
-## Dependencies
+## ---- eval=FALSE---------------------------------------------------------
+## 
+## # setup & loading functions -----------------------------------------------
+## 
+## # hope I didn't forget any
+## 
+## # if you don't have these packages yet, please install:
+## # install.packages("circlize")
+## # install.packages("dplyr")
+## # install.packages("RColorBrewer") # funky colours
+## # install.packages("viridis")  # even more funky colours <3
+## # install.packages("purrr")
+## # install.packages("readr")
+## # install.packages("knitr") # required only to process this file
+## 
 
-### Installation..
-```{r, eval=FALSE}
-
-# setup & loading functions -----------------------------------------------
-
-# hope I didn't forget any
-
-# if you don't have these packages yet, please install:
-# install.packages("circlize")
-# install.packages("dplyr")
-# install.packages("RColorBrewer") # funky colours
-# install.packages("viridis")  # even more funky colours <3
-# install.packages("purrr")
-# install.packages("readr")
-# install.packages("knitr") # required only to process this file
-
-```
-
-### Loading packages..
-```{r, message=FALSE, warning=FALSE}
+## ---- message=FALSE, warning=FALSE---------------------------------------
 library(circlize)
 library(dplyr)
 library(RColorBrewer)
 library(viridis)
 library(purrr)
 library(readr)
-```
 
-### source helper functions from ./r ..
-
-```{r}
+## ------------------------------------------------------------------------
 # source all files in ./r
 # they're all functions used below
 sapply(list.files("./r",pattern = ".*\\.R",full.names = T),source) %>% invisible()
-```
 
-### Citations
-
-Please cite relevant R packages in any publication:
-
-```{r}
+## ------------------------------------------------------------------------
 citation("circlize")
 #' citation("dplyr")
 #' citation("purrr")
-```
 
-## Data
-
-Read data *from csv* instead of xlsx to avoid non-funky dependencies & standardise headers..
-```{r, message=FALSE,warning=FALSE}
+## ---- message=FALSE,warning=FALSE----------------------------------------
 ab <- readr::read_delim("./data/antibody_v4.csv",delim = ",")
 # standardise headers
 ab <- ab %>% select(Patient = ID,
@@ -75,16 +47,8 @@ ab <- ab %>% select(Patient = ID,
 ab$Patient<-gsub("COVID0","CV",ab$Patient)
 ab$Patient<-gsub("COVID-","CV-",ab$Patient)
 
-```
 
-## Processing
-
-### prepare antibody data
-
-- merge patients
-- add info about known covid IPCs
-- generate x coordinates to be used as angular position (as usually for example genomic location)
-```{r}
+## ------------------------------------------------------------------------
 ab <- ab %>%
   merge_patients("CV01","CV01_t2") %>% 
   merge_patients("CV-SP", "CV-SP (HD-B)") %>%
@@ -107,48 +71,24 @@ ab <- ab %>%
     "CV07-209"
                                )) %>% 
   generate_x_coordinates 
-```
 
-### Links
-
-Create a table with connections from the antibody data
-
-- extract which individual antibody names are linked
-- add some info from the antibody table
-- merge links coming from same clonality
-- remove wihtin-patient links
-
-```{r}
+## ------------------------------------------------------------------------
 links <- ab %>%
   get_link_table %>%  
   add_info_to_link_table(ab) %>% 
   merge_clonality_in_links %>% 
   remove_inter_patient_links
-```
 
-
-## Plot
-
-
-### Start graphics device 
-```{r, eval = TRUE}
-
+## ---- eval = TRUE--------------------------------------------------------
 pdf(file = "./circos_plot.pdf",width = 5,height = 6)
 
-```
-
-### Build plot elements..
-
-- set parameters (most are still in the function calls in this document though..)
-- set up circular layout
-- plot stripes for clonality & individual antibodies
-- plot links
-- plot labels
-
-```{r}
+## ------------------------------------------------------------------------
 
 
 # plot parameters --------------------------------------------------------------------
+
+pdf_width <- 5
+pdf_height<- 6
 gap_between_patients <- 5 # in degree out of 360
 
 # plot setup --------------------------------------------------------------------
@@ -223,18 +163,11 @@ patient_labels(ab,patient_label_offset = 0.15,
 #                 antibody_label_facing = "clockwise",
 #                 antibody_label_size = 0.2)
 
-```
 
-### close graphics device..
-```{r, results=FALSE, eval = TRUE}
+## ---- results=FALSE, eval = TRUE-----------------------------------------
 # dev.off()
-```
 
-
-## Appendix
-
-### sourced scripts / functions
-```{r, echo = T}
+## ---- echo = T-----------------------------------------------------------
 
 
 object_list <- sapply(ls(),get) %>% sapply(is.function)
@@ -248,18 +181,12 @@ c("#000004FF", "#07071DFF", "#160F3BFF", "#29115AFF", "#400F73FF",
 "#FD9A6AFF", "#FEB37BFF", "#FECC8FFF", "#FDE4A6FF", "#FCFDBFFF"
 )
 
-```
 
-
-### Reproducibility Signature
-```{r}
+## ------------------------------------------------------------------------
 Sys.time()
-```
-```{r}
+
+## ------------------------------------------------------------------------
 sessionInfo()
-
-
-```
 
 
 
