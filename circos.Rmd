@@ -21,6 +21,8 @@ Installation..
 # install.packages("dplyr")
 # install.packages("RColorBrewer")
 # install.packages("purrr")
+# install.packages("knitr") # required only to process this file
+# install.packages("readr")
 ```
 
 Loading..
@@ -29,6 +31,7 @@ library(circlize)
 library(dplyr)
 library(RColorBrewer)
 library(purrr)
+library(readr)
 ```
 
 helper functions..
