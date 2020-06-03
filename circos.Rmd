@@ -1,6 +1,6 @@
 ---
 title: "covid antibody circlos chart"
-author: "Martin Barner, Momsen R"
+author: "Martin Barner"
 date: "28 5 2020"
 output:
   html_document:
@@ -72,9 +72,8 @@ ab <- ab %>% select(Patient = ID,
                     `Inter-Patient connection` = `Inter Patient Clonality`)
 
 # shorten patient names
-ab$Patient<-gsub("COVID0","CV",ab$Patient)
-ab$Patient<-gsub("COVID-","CV-",ab$Patient)
-
+ab$Patient<-gsub("COVID0","",ab$Patient)
+ab$Patient<-gsub("COVID-","",ab$Patient)
 ```
 
 ## Processing
@@ -86,8 +85,8 @@ ab$Patient<-gsub("COVID-","CV-",ab$Patient)
 - generate x coordinates to be used as angular position (as usually for example genomic location)
 ```{r}
 ab <- ab %>%
-  merge_patients("CV01","CV01_t2") %>% 
-  merge_patients("CV-SP", "CV-SP (HD-B)") %>%
+  merge_patients("01","01_t2") %>% 
+  merge_patients("SP", "SP (HD-B)") %>%
   highlight_known_covid_ipcs(c(
     "CV38-119",
     # "CV03-150",
@@ -131,10 +130,8 @@ links <- ab %>%
 
 
 ### Start graphics device 
-```{r, eval = TRUE}
-
-pdf(file = "./circos_plot.pdf",width = 5,height = 6)
-
+```{r, eval = FALSE}
+pdf(file = "./circos.pdf",width = 5,height = 6)
 ```
 
 ### Build plot elements..
@@ -147,8 +144,10 @@ pdf(file = "./circos_plot.pdf",width = 5,height = 6)
 
 ```{r}
 
-
 # plot parameters --------------------------------------------------------------------
+
+pdf_width <- 5
+pdf_height<- 6
 gap_between_patients <- 5 # in degree out of 360
 
 # plot setup --------------------------------------------------------------------
@@ -161,7 +160,6 @@ x_limits <- ab %>% group_by(Patient) %>% summarise(x_min = min(start), x_max = m
 #' allocate sectors
 #' "factors" argument: variable with categories to split the pie (often chromosomes)
 #' "xlim" argument: the minimum and maximum values for the x axis
-
 circos.initialize(factors = ab$`Patient`, xlim = x_limits)
 
 # track for antibody stripes
@@ -187,15 +185,30 @@ ab %>%
 
 # individual antibodies
 
-# decide the colors
-colors <- ifelse(ab$known_covid_antibody,
-                                  palette[13], # when known_covid_antibody then this color
-                                  "#CCCCCC" )# otherwise this color
+# unique IPC values (anti covid only) 
+color_categories <-unique(ab$`Inter-Patient connection`[ab$known_covid_antibody])
+
+# palette with as many colors (uncomment the palette you like)
+# ipc_palette <- viridis::magma(length(color_categories))
+# ipc_palette <- viridis::inferno(length(color_categories))
+# ipc_palette <- viridis::plasma(length(color_categories))
+ipc_palette <- RColorBrewer::brewer.pal(length(color_categories),"Dark2")
+names(ipc_palette)<-color_categories
+# randomise palette
+set.seed(1)
+ipc_palette<-sample(ipc_palette)
+
+# vector wtih colors matchig the antibody table
+ipc_colors <- ipc_palette[ab$`Inter-Patient connection`]
+# all not found in anti-covid-ipc palette gray:
+ipc_colors[is.na(ipc_colors)]<-"#BBBBBB"
+
+
 # plot
 ab %>% 
-  antibody_rectangles(rectangle_color = colors,
-                      border_color = colors,
-                      y=c(-0.1,0.9)) # the track goes from 0 to 1; I move this down a notch so that the clonality peaks out and so there is no gap to the links because it looks cool
+  antibody_rectangles(rectangle_color = ipc_colors,
+                      border_color = ipc_colors,
+                      y=c(-0.1,0.9),lty = "blank") # the track goes from 0 to 1; I move this down a notch so that the clonality peaks out and so there is no gap to the links because it looks cool
 
 
 
@@ -203,9 +216,15 @@ ab %>%
 # Plot connections --------------------------------------------------------
 
 # decide the colors
-link_colors <- ifelse(links$known_covid_antibody,
-                      palette[c(13)], # when known_covid_antibody then this color
-                      "#CCCCCC") # otherwise this color 
+# link_colors <- ifelse(links$known_covid_antibody,
+#                       palette[c(13)], # when known_covid_antibody then this color
+#                       "#CCCCCC") # otherwise this color 
+
+# pick from anti-covid ipc palette
+link_colors<-ipc_palette[links$from_ipc]
+# all remaining to gray:
+link_colors[is.na(link_colors)]<-"#BBBBBB"
+
 
 # plot the links
 antibody_links(links,link_color = link_colors)
@@ -226,8 +245,8 @@ patient_labels(ab,patient_label_offset = 0.15,
 ```
 
 ### close graphics device..
-```{r, results=FALSE, eval = TRUE}
-# dev.off()
+```{r, results=FALSE, eval = FALSE}
+dev.off()
 ```
 
 

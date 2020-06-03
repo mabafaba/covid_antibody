@@ -35,41 +35,46 @@ add_info_to_link_table<-function(links,ab){
                              from_clonality = Clonality,
                              from_start = start,
                              from_end = end,
-                             known_covid_antibody = known_covid_antibody),
+                             known_covid_antibody = known_covid_antibody,
+                             from_ipc = `Inter-Patient connection`),
                by=c("from_name" = "Name")) %>% 
     # merge info for the end antibody
     inner_join(ab %>% select(Name,
                              to_patient = Patient,
                              to_clonality = Clonality,
                              to_start = start,
-                             to_end = end),
-               by=c("to_name" = "Name"))
+                             to_end = end,
+                             to_ipc = `Inter-Patient connection`),
+               by=c("to_name" = "Name")
+    )
 }
 
 
 
 
 merge_clonality_in_links<-function(links){
-#' merge links that come from & to antibodies of the same clonality
-#' this means we want one row for each unique patient & clonality (from and to) combination (considering "unique" clonalities as actually unique values)
-
-#' create actually unique clonality values for "unique" clonality entries
-links$from_clonality[links$from_clonality=="unique"] <- paste("unique_clon ",
-                                                              links$from_name[links$from_clonality=="unique"]
-)
-links$to_clonality[links$to_clonality=="unique"] <- paste("unique_clon ",
-                                                          links$to_name[links$to_clonality=="unique"])                                                              
-
-
-links <- links %>% 
-  group_by(from_patient, from_clonality, to_patient,to_clonality, known_covid_antibody) %>%  # this will let us end up with one row per unique combination of these variables
-  summarise(
-    # get the min/max values for the start/end x coordinates of the "from" and "to" anitbodies of each joined band
-    from_start = min(from_start),
-    from_end = max(from_end),
-    to_start = min(to_start),
-    to_end = max(to_end)
+  #' merge links that come from & to antibodies of the same clonality
+  #' this means we want one row for each unique patient & clonality (from and to) combination (considering "unique" clonalities as actually unique values)
+  
+  #' create actually unique clonality values for "unique" clonality entries
+  links$from_clonality[links$from_clonality=="unique"] <- paste("unique_clon ",
+                                                                links$from_name[links$from_clonality=="unique"]
   )
+  links$to_clonality[links$to_clonality=="unique"] <- paste("unique_clon ",
+                                                            links$to_name[links$to_clonality=="unique"])                                                              
+  
+  
+  links <- links %>% 
+    group_by(from_patient, from_clonality, to_patient,to_clonality, known_covid_antibody) %>%  # this will let us end up with one row per unique combination of these variables
+    summarise(
+      # get the min/max values for the start/end x coordinates of the "from" and "to" anitbodies of each joined band
+      from_start = min(from_start),
+      from_end = max(from_end),
+      to_start = min(to_start),
+      to_end = max(to_end),
+      from_ipc = first(from_ipc),
+      to_ipc = first(to_ipc)
+    )
 }
 
 remove_inter_patient_links<-function(links){

@@ -1,7 +1,7 @@
 
 # plot elements -----------------------------------------------------------
 
-antibody_rectangles<-function(ab, rectangle_color,border_color = "white",y=c(0,1),track.index = NULL){
+antibody_rectangles<-function(ab, rectangle_color,border_color = "white",y=c(0,1),lty="solid",track.index = NULL){
   
   ab %>% ungroup %>% 
     transmute(xleft = start,ybottom = y[1],
@@ -10,7 +10,8 @@ antibody_rectangles<-function(ab, rectangle_color,border_color = "white",y=c(0,1
               sector.index = Patient,
               track.index = track.index,
               col = rectangle_color,
-              border = border_color) %>%
+              border = border_color,
+              lty = lty) %>%
     purrr::pmap(circos.rect) %>% invisible()
   
 }
