@@ -20,11 +20,18 @@ antibody_rectangles<-function(ab, rectangle_color,border_color = "white",y=c(0,1
 antibody_links<-function(links,link_color){
   
   links$color<-link_color
+
+  link_thickness <- ifelse(links$known_covid_antibody,
+                           "1", # when known_covid_antibody then this thickness
+                           "0.2") #otherwise this
+
+  links$thickness<-link_thickness
+  
   links %>% ungroup %>% rowwise %>% transmute(sector.index1 = from_patient,
                                               point1 = list(c(from_start,from_end)),
                                               sector.index2 = to_patient,
                                               point2 = list(c(to_start,to_end)),
-                                              col = color,lty = "blank") %>%  
+                                              col = color,lty = "solid", lwd= thickness) %>%  
     purrr::pmap(circos.link) %>% invisible() 
 }
 
