@@ -1,5 +1,13 @@
 # Covid Antibody Visualisation
 
+## Publication
+
+This code was used for:
+Kreye, Jakob, et al. "A therapeutic non-self-reactive SARS-CoV-2 antibody protects from lung pathology in a COVID-19 hamster model." Cell (2020).
+https://doi.org/10.1016/j.cell.2020.09.049
+(Figure S3B)
+
+
 ## Project structure
 - `circos.html` output (includes code)
 - `circos.Rmd`  main script & doc (produces circos.html)
