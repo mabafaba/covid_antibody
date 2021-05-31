@@ -1,7 +1,8 @@
-## ----setup, include=FALSE------------------------------------------------
+## ----setup, include=FALSE-------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
 
-## ---- eval=FALSE---------------------------------------------------------
+
+## ---- eval=FALSE----------------------------------------------------------------------------------------------------------------
 ## 
 ## # setup & loading functions -----------------------------------------------
 ## 
@@ -17,7 +18,8 @@ knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
 ## # install.packages("knitr") # required only to process this file
 ## 
 
-## ---- message=FALSE, warning=FALSE---------------------------------------
+
+## ---- message=FALSE, warning=FALSE----------------------------------------------------------------------------------------------
 library(circlize)
 library(dplyr)
 library(RColorBrewer)
@@ -25,65 +27,63 @@ library(viridis)
 library(purrr)
 library(readr)
 
-## ------------------------------------------------------------------------
+
+## -------------------------------------------------------------------------------------------------------------------------------
 # source all files in ./r
 # they're all functions used below
 sapply(list.files("./r",pattern = ".*\\.R",full.names = T),source) %>% invisible()
 
-## ------------------------------------------------------------------------
+
+## -------------------------------------------------------------------------------------------------------------------------------
 citation("circlize")
 #' citation("dplyr")
 #' citation("purrr")
 
-## ---- message=FALSE,warning=FALSE----------------------------------------
-ab <- readr::read_delim("./data/antibody_v4.csv",delim = ",")
+
+## ---- message=FALSE,warning=FALSE-----------------------------------------------------------------------------------------------
+ab <- readr::read_delim("./data/clonality_and_clonotype_analysis.csv",delim = ",")
+# ab <- readr::read_delim("./data/mAb_B1351_v3.csv",delim = ";")
+
 # standardise headers
 ab <- ab %>% select(Patient = ID,
                     Name = Name,
                     Clonality = Clonality,
                     `Inter-Patient connection` = `Inter Patient Clonality`)
 
+ab$Clonality[ab$Clonality=="Unique"]<-"unique"
+
 # shorten patient names
-ab$Patient<-gsub("COVID0","CV",ab$Patient)
-ab$Patient<-gsub("COVID-","CV-",ab$Patient)
+#ab$Patient<-gsub("COVID0","",ab$Patient)
+#ab$Patient<-gsub("COVID-","",ab$Patient)
 
 
-## ------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------------------------------
 ab <- ab %>%
-  merge_patients("CV01","CV01_t2") %>% 
-  merge_patients("CV-SP", "CV-SP (HD-B)") %>%
+#  merge_patients("01","01_t2") %>% 
+#  merge_patients("SP", "SP (HD-B)") %>%
   highlight_known_covid_ipcs(c(
-    "CV38-119",
     # "CV03-150",
-    "CV07-209",
-    # "HL CV01-276",
-    "CV07-209",
-    "HK CV05-191",
-    "HL CV07-235",
-    "HK CV07-143",
-    "CV07-255", 
-    "CV38-119",
-    # "CV03-106",
-    "(CV05-114)",
-    "CV07-255",
-    # "(CV-SP-107)",
-    "CV05-119",
     "CV07-209"
-                               )) %>% 
+    )) %>% 
   generate_x_coordinates 
 
-## ------------------------------------------------------------------------
+
+## -------------------------------------------------------------------------------------------------------------------------------
+debug(get_link_table)
+
 links <- ab %>%
   get_link_table %>%  
   add_info_to_link_table(ab) %>% 
   merge_clonality_in_links %>% 
   remove_inter_patient_links
 
-## ---- eval = TRUE--------------------------------------------------------
-pdf(file = "./circos_plot.pdf",width = 5,height = 6)
 
-## ------------------------------------------------------------------------
 
+## ---- eval = FALSE--------------------------------------------------------------------------------------------------------------
+## pdf(file = "./circos.pdf",width = 5,height = 6)
+
+
+## -------------------------------------------------------------------------------------------------------------------------------
 
 # plot parameters --------------------------------------------------------------------
 
@@ -101,7 +101,6 @@ x_limits <- ab %>% group_by(Patient) %>% summarise(x_min = min(start), x_max = m
 #' allocate sectors
 #' "factors" argument: variable with categories to split the pie (often chromosomes)
 #' "xlim" argument: the minimum and maximum values for the x axis
-
 circos.initialize(factors = ab$`Patient`, xlim = x_limits)
 
 # track for antibody stripes
@@ -127,14 +126,29 @@ ab %>%
 
 # individual antibodies
 
-# decide the colors
-colors <- ifelse(ab$known_covid_antibody,
-                                  palette[13], # when known_covid_antibody then this color
-                                  "#CCCCCC" )# otherwise this color
+# unique IPC values (anti covid only) 
+color_categories <-unique(ab$`Inter-Patient connection`[ab$known_covid_antibody])
+
+# palette with as many colors (uncomment the palette you like)
+# ipc_palette <- viridis::magma(length(color_categories))
+# ipc_palette <- viridis::inferno(length(color_categories))
+# ipc_palette <- viridis::plasma(length(color_categories))
+ipc_palette <- RColorBrewer::brewer.pal(length(color_categories),"Dark2")
+names(ipc_palette)<-color_categories
+# randomise palette
+set.seed(1)
+ipc_palette<-sample(ipc_palette)
+
+# vector wtih colors matchig the antibody table
+ipc_colors <- ipc_palette[ab$`Inter-Patient connection`]
+# all not found in anti-covid-ipc palette gray:
+ipc_colors[is.na(ipc_colors)]<-"#BBBBBB"
+
+
 # plot
 ab %>% 
-  antibody_rectangles(rectangle_color = colors,
-                      border_color = colors,
+  antibody_rectangles(rectangle_color = ipc_colors,
+                      border_color = ipc_colors,
                       y=c(-0.1,0.9)) # the track goes from 0 to 1; I move this down a notch so that the clonality peaks out and so there is no gap to the links because it looks cool
 
 
@@ -143,9 +157,15 @@ ab %>%
 # Plot connections --------------------------------------------------------
 
 # decide the colors
-link_colors <- ifelse(links$known_covid_antibody,
-                      palette[c(13)], # when known_covid_antibody then this color
-                      "#CCCCCC") # otherwise this color 
+# link_colors <- ifelse(links$known_covid_antibody,
+#                       palette[c(13)], # when known_covid_antibody then this color
+#                       "#CCCCCC") # otherwise this color 
+
+# pick from anti-covid ipc palette
+link_colors<-ipc_palette[links$from_ipc]
+# all remaining to gray:
+link_colors[is.na(link_colors)]<-"#BBBBBB"
+
 
 # plot the links
 antibody_links(links,link_color = link_colors)
@@ -164,10 +184,12 @@ patient_labels(ab,patient_label_offset = 0.15,
 #                 antibody_label_size = 0.2)
 
 
-## ---- results=FALSE, eval = TRUE-----------------------------------------
-# dev.off()
 
-## ---- echo = T-----------------------------------------------------------
+## ---- results=FALSE, eval = FALSE-----------------------------------------------------------------------------------------------
+## dev.off()
+
+
+## ---- echo = T------------------------------------------------------------------------------------------------------------------
 
 
 object_list <- sapply(ls(),get) %>% sapply(is.function)
@@ -182,10 +204,11 @@ c("#000004FF", "#07071DFF", "#160F3BFF", "#29115AFF", "#400F73FF",
 )
 
 
-## ------------------------------------------------------------------------
+
+## -------------------------------------------------------------------------------------------------------------------------------
 Sys.time()
 
-## ------------------------------------------------------------------------
+## -------------------------------------------------------------------------------------------------------------------------------
 sessionInfo()
 
 
